@@ -2,17 +2,24 @@
 #include <stdlib.h>
 int** cria_tabuleiro(int n);
 int insere_peca(int** tabuleiro, int posX, int posY, int tipo_peca);
+int retira_peca(int** tabuleiro, int posX, int posY);
 int verifica_ataque(int** tabuleiro, int n, int posX, int posY);
 void apaga_tabuleiro(int **tabuleiro, int n);
 void limpa_tabuleiro(int **tabuleiro, int n);
 void printa_tabuleiro(int **tabuleiro, int n);
-//Em tab 0 indica que não há peças no local e 1 indica que há peças
+int** inicializa_populacao(int n);
+void preenche_aleatorio(int* vetor, int n);
+int avalia_individuo(int **tabuleiroint, int* individuo, int n);
+/**** funnções do AG ****/
+#define MAX_POPULATION 20
+#define MUTATION_RATE  0.01
+
 
 int main()
 {
+    srand(time(NULL));
     int n; //tamanho do tabuleiro 
     int qnt; //quantidade de peças
-    int *pointer; //transmite os vetores como paramêtros
     printf("Digite a dimensao n desejada para o tabuleiro: ");
     scanf("%d", &n);
     int **tabuleiro = cria_tabuleiro(n);
@@ -33,6 +40,77 @@ int main()
     printf("\nFim");
     return 0;
 }
+/*
+Gera vetor de fitness normalizado da população.
+100 -> melhor
+0   -> pior
+*/
+double* gera_vetor_fitness(int** population, int** tabuleiro, int n){
+    int aux[n];
+    int soma_fitness = 0;
+    for(int i = 0; i < MAX_POPULATION;i++){
+      soma_fitness+= avalia_individuo(tabuleiro,population[i],n);
+    }
+    double* fitness_population = (double*)calloc(n,sizeof(double));
+    for(int i = 0; i < MAX_POPULATION; i++){
+      fitness_population[i] = 1-avalia_individuo(tabuleiro,population[i],n)/soma_fitness;
+    }
+    return fitness_population;
+}
+
+int
+
+
+
+
+
+/*
+Inicializa uma população aleatória com indivíduos que possuem n genomas.
+retorna a matriz de população
+retorna null -> erro
+*/
+int** inicializa_populacao(int n){
+    int **population = (int**)calloc(MAX_POPULATION,sizeof(int*));
+    if(population == NULL)
+      return NULL;
+    for(int i = 0; i < MAX_POPULATION; i++){
+      population[i] = (int*)calloc(n,sizeof(int));
+      if(population[i] == NULL)
+        return NULL;
+        preenche_aleatorio(population[i], n);
+    }
+    return population;
+}
+
+
+/*
+Preenche um vetor de n elementos com números aleatórios entre 0 e n
+*/
+void preenche_aleatorio(int* vetor, int n){
+    for(int i = 0; i < n; i++){
+        vetor[i] = rand()%n;
+    }
+}
+
+
+
+/*
+Calcula o fitness de um único indivíduo
+retorna sua avaliação
+*/
+int avalia_individuo(int** tabuleiro,int* individuo, int n){
+    int soma_fitness = 0;
+    limpa_tabuleiro(tabuleiro, n);
+    for(int i = 0; i < n; i++)
+      insere_peca(tabuleiro,i,individuo[i],1);
+    for(int i = 0; i < n; i++){
+      soma_fitness = verifica_ataque(tabuleiro, n,i,individuo[i]);
+      retira_peca(tabuleiro, i, individuo[i]);
+    }
+    return soma_fitness;
+}
+
+
 
 
 /*
@@ -78,13 +156,26 @@ void limpa_tabuleiro(int** tabuleiro, int n){
 /*
 Insere uma peça no tabuleiro
 Retorno:
--1 - ERRO
-1 - SUCESSO
+-1 -> ERRO
+ 1 -> SUCESSO
 */
 int insere_peca(int** tabuleiro, int posX, int posY, int tipo_peca){
     if(tabuleiro[posX][posY] != 0)
-        return 0;
+        return -1;
     tabuleiro[posX][posY] = tipo_peca;
+    return 1;
+}
+/*
+Remove uma peça do tabuleiro
+-1 -> ERRO
+ 1 -> SUCESSO
+*/
+
+
+int retira_peca(int** tabuleiro, int posX, int posY){
+    if(tabuleiro[posX][posY] == 0)
+        return -1;
+    tabuleiro[posX][posY] = 0;
     return 1;
 }
 
