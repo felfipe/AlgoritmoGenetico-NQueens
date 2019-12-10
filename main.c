@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+
+
 int** cria_tabuleiro(int n);
 int insere_peca(int** tabuleiro, int posX, int posY, int tipo_peca);
 int retira_peca(int** tabuleiro, int posX, int posY);
@@ -7,19 +10,25 @@ int verifica_ataque(int** tabuleiro, int n, int posX, int posY);
 void apaga_tabuleiro(int **tabuleiro, int n);
 void limpa_tabuleiro(int **tabuleiro, int n);
 void printa_tabuleiro(int **tabuleiro, int n);
-int** inicializa_populacao(int n);
-void preenche_aleatorio(int* vetor, int n);
-int avalia_individuo(int **tabuleiroint, int* individuo, int n);
+int insere_individuo(int *individuo,int** tabuleiro, int n);
 /**** funnções do AG ****/
+
+int** inicializa_populacao(int n);
+void apaga_populacao(int** populacao);
+void preenche_aleatorio(int* vetor, int n);
+float* gera_vetor_fitness(int** population, int** tabuleiro, int n);
+int avalia_individuo(int **tabuleiroint, int* individuo, int n);
+int recombina_individuos_elitismo(int** population, int n, float* fitness);
+int mutacao(int** population, int n);
+
 #define MAX_POPULATION 20
-#define MUTATION_RATE  0.01
+#define MUTATION_RATE  0.1
 
 
 int main()
 {
     srand(time(NULL));
     int n; //tamanho do tabuleiro 
-    int qnt; //quantidade de peças
     printf("Digite a dimensao n desejada para o tabuleiro: ");
     scanf("%d", &n);
     int **tabuleiro = cria_tabuleiro(n);
@@ -28,14 +37,38 @@ int main()
         return 0;
     }
     limpa_tabuleiro(tabuleiro, n);
-    for(int i = 0; i < n; i++){
-      int posX, posY;
-      scanf("%d %d", &posX, &posY);
-      insere_peca(tabuleiro,posX,posY,1);
+    
+    int criterio_parada = 1;
+    int **populacao = inicializa_populacao(n);
+    
+    int melhor_individuo[n];
+    int geracao = 0;
+    while(criterio_parada == 1){
+      float* fitness = gera_vetor_fitness(populacao,tabuleiro,n);
+      int index_melhor_individuo = recombina_individuos_elitismo(populacao,n,fitness);
+      for(int i = 0; i < n; i++)
+        melhor_individuo[i] = populacao[index_melhor_individuo][i];
+      mutacao(populacao,n);
+      limpa_tabuleiro(tabuleiro, n);
+      insere_individuo(populacao[index_melhor_individuo], tabuleiro, n);
+      printa_tabuleiro(tabuleiro,n);
+      geracao++;
+      printf("\n%d",avalia_individuo(tabuleiro, melhor_individuo, n));
+      printf("Geracao: %d\n",geracao);
+      printf("Fitness melhor individuo: %lf", fitness[index_melhor_individuo]);
+      getchar();
+      free(fitness);
     }
-    printa_tabuleiro(tabuleiro, n);
-    int ataque = verifica_ataque(tabuleiro, n, 0, 1);
-    printf("\nataque: %d",ataque);
+
+
+
+
+
+
+
+
+
+
     free(tabuleiro);
     printf("\nFim");
     return 0;
@@ -45,22 +78,62 @@ Gera vetor de fitness normalizado da população.
 100 -> melhor
 0   -> pior
 */
-double* gera_vetor_fitness(int** population, int** tabuleiro, int n){
-    int aux[n];
+float* gera_vetor_fitness(int** population, int** tabuleiro, int n){
     int soma_fitness = 0;
     for(int i = 0; i < MAX_POPULATION;i++){
       soma_fitness+= avalia_individuo(tabuleiro,population[i],n);
     }
-    double* fitness_population = (double*)calloc(n,sizeof(double));
+    float* fitness_population = (float*)calloc(MAX_POPULATION,sizeof(float));
     for(int i = 0; i < MAX_POPULATION; i++){
-      fitness_population[i] = 1-avalia_individuo(tabuleiro,population[i],n)/soma_fitness;
+      fitness_population[i] = 1-((float)avalia_individuo(tabuleiro,population[i],n))/soma_fitness;
     }
     return fitness_population;
 }
 
-int
+
+/*
+Função que faz a recombinação dos indivíduos.
+O método utilizado é pegar o melhor indivíduo e recombinar com toda a população.
+A recombinação é feita herdando com 50% de chance cada o gene do pai1 ou pai2.
+*/
+int recombina_individuos_elitismo(int** population, int n, float *fitness){
+    int index_melhorIndividuo;
+    int fitness_melhorIndividuo = 0;
+    for(int i = 0; i< MAX_POPULATION; i++)
+      if(fitness[i] > fitness_melhorIndividuo){
+        index_melhorIndividuo = i;
+        fitness_melhorIndividuo = fitness[i];
+      }
+    for(int i = 0; i < MAX_POPULATION; i++){
+      for(int j = 0; j < n; j++){
+        if(rand()%2)
+          population[i][j] = population[index_melhorIndividuo][j]; // Herda a posição Y do melhor pai
+      }
+    }
+    return index_melhorIndividuo;
+}
 
 
+/*
+Passa por todos os indivíduos e calcula a probabilidade de mutação.
+Caso ocorra, sorteia um genoma entre 0 e n e soma ou subtrai 1 deste aleatoriamente.
+*/
+int mutacao(int **population, int n){
+  for(int i = 0; i < MAX_POPULATION; i++){
+      if((rand()%1000/1000.0) <= MUTATION_RATE){
+        int genoma_mutado = rand()%n;
+        if(population[i][genoma_mutado] == 0)
+          population[i][genoma_mutado] +=1;
+        else if(population[i][genoma_mutado] == n-1)
+          population[i][genoma_mutado] -=1;
+        else if(rand()%2)
+          population[i][genoma_mutado] +=1;
+        else
+          population[i][genoma_mutado] -=1;
+      }
+  }
+  return 1;
+}
 
 
 
@@ -75,13 +148,19 @@ int** inicializa_populacao(int n){
       return NULL;
     for(int i = 0; i < MAX_POPULATION; i++){
       population[i] = (int*)calloc(n,sizeof(int));
-      if(population[i] == NULL)
-        return NULL;
         preenche_aleatorio(population[i], n);
     }
     return population;
 }
 
+/*
+Apaga a populacao.
+*/
+void apaga_populacao(int** populacao){
+    for(int i = 0; i < MAX_POPULATION; i++)
+      free(populacao[i]);
+    free(populacao);
+}
 
 /*
 Preenche um vetor de n elementos com números aleatórios entre 0 e n
@@ -104,12 +183,21 @@ int avalia_individuo(int** tabuleiro,int* individuo, int n){
     for(int i = 0; i < n; i++)
       insere_peca(tabuleiro,i,individuo[i],1);
     for(int i = 0; i < n; i++){
-      soma_fitness = verifica_ataque(tabuleiro, n,i,individuo[i]);
+      soma_fitness += verifica_ataque(tabuleiro, n,i,individuo[i]);
       retira_peca(tabuleiro, i, individuo[i]);
-    }
+    } 
     return soma_fitness;
 }
-
+/*
+  Insere um indivíduo no tabuleiro.
+*/
+int insere_individuo(int* individuo, int** tabuleiro, int n){
+  if(individuo == NULL)
+    return 0;
+  for(int i = 0; i < n; i++)
+    tabuleiro[i][individuo[i]] = 1;
+  return 1;
+}
 
 
 
@@ -138,7 +226,7 @@ Apaga o tabuleiro nxn
 void apaga_tabuleiro(int **tabuleiro, int n){
   for(int i = 0; i < n; i++)
     free(tabuleiro[i]);
-    free(tabuleiro);
+  free(tabuleiro);
 }
 
 
