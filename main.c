@@ -22,7 +22,7 @@ int recombina_individuos_elitismo(int** population, int n, int* fitness);
 int mutacao(int** population, int n);
 
 #define MAX_POPULATION 10
-#define MUTATION_RATE  0.4
+#define MUTATION_RATE  0.1
 
 
 int main()
@@ -37,7 +37,7 @@ int main()
         return 0;
     }
     limpa_tabuleiro(tabuleiro, n);
-    
+    int genocidios = 0;
     int criterio_parada = 1;
     int melhor_individuo[n];
     int geracao = 0;
@@ -55,17 +55,23 @@ int main()
         mutacao(populacao,n);
         limpa_tabuleiro(tabuleiro, n);
         insere_individuo(populacao[index_melhor_individuo], tabuleiro, n);
-        printa_tabuleiro(tabuleiro, n);
+        //printa_tabuleiro(tabuleiro, n);
         geracao++;
         int fitness_melhor_individuo = avalia_individuo(tabuleiro, melhor_individuo, n);
-        printf("geracao: %d\n",geracao);
-        printf("fitness: %d\n", fitness_melhor_individuo);
+        //printf("geracao: %d\n",geracao);
+        //printf("fitness: %d\n", fitness_melhor_individuo);
         free(fitness);
         if(fitness_melhor_individuo == 0){
+          insere_individuo(populacao[index_melhor_individuo], tabuleiro, n);
+          printa_tabuleiro(tabuleiro, n);
+          printf("geracao: %d\n",geracao);
+          printf("genocidios: %d", genocidios);
+          printf("fitness: %d\n", fitness_melhor_individuo);
           criterio_parada = 0;
           break;
         }
-        if(geracao == 50000){
+        if(geracao == 10000){
+          genocidios++;
           geracao = 1;
           apaga_populacao(populacao);
           break;
