@@ -16,13 +16,13 @@ int insere_individuo(int *individuo,int** tabuleiro, int n);
 int** inicializa_populacao(int n);
 void apaga_populacao(int** populacao);
 void preenche_aleatorio(int* vetor, int n);
-float* gera_vetor_fitness(int** population, int** tabuleiro, int n);
+int* gera_vetor_fitness(int** population, int** tabuleiro, int n);
 int avalia_individuo(int **tabuleiroint, int* individuo, int n);
-int recombina_individuos_elitismo(int** population, int n, float* fitness);
+int recombina_individuos_elitismo(int** population, int n, int* fitness);
 int mutacao(int** population, int n);
 
-#define MAX_POPULATION 20
-#define MUTATION_RATE  0.1
+#define MAX_POPULATION 10
+#define MUTATION_RATE  0.4
 
 
 int main()
@@ -39,25 +39,38 @@ int main()
     limpa_tabuleiro(tabuleiro, n);
     
     int criterio_parada = 1;
-    int **populacao = inicializa_populacao(n);
-    
     int melhor_individuo[n];
     int geracao = 0;
-    while(criterio_parada == 1){
-      float* fitness = gera_vetor_fitness(populacao,tabuleiro,n);
-      int index_melhor_individuo = recombina_individuos_elitismo(populacao,n,fitness);
-      for(int i = 0; i < n; i++)
-        melhor_individuo[i] = populacao[index_melhor_individuo][i];
-      mutacao(populacao,n);
-      limpa_tabuleiro(tabuleiro, n);
-      insere_individuo(populacao[index_melhor_individuo], tabuleiro, n);
-      printa_tabuleiro(tabuleiro,n);
-      geracao++;
-      printf("\n%d",avalia_individuo(tabuleiro, melhor_individuo, n));
-      printf("Geracao: %d\n",geracao);
-      printf("Fitness melhor individuo: %lf", fitness[index_melhor_individuo]);
-      getchar();
-      free(fitness);
+    while(criterio_parada){
+      int **populacao = inicializa_populacao(n);
+      if(geracao > 0)
+        if(rand()%2)
+          for(int i = 0; i < n; i++)
+            populacao[0][i] = melhor_individuo[i];
+      while(1){
+        int* fitness = gera_vetor_fitness(populacao,tabuleiro,n);
+        int index_melhor_individuo = recombina_individuos_elitismo(populacao,n,fitness);
+        for(int i = 0; i < n; i++)
+          melhor_individuo[i] = populacao[index_melhor_individuo][i];
+        mutacao(populacao,n);
+        limpa_tabuleiro(tabuleiro, n);
+        insere_individuo(populacao[index_melhor_individuo], tabuleiro, n);
+        printa_tabuleiro(tabuleiro, n);
+        geracao++;
+        int fitness_melhor_individuo = avalia_individuo(tabuleiro, melhor_individuo, n);
+        printf("geracao: %d\n",geracao);
+        printf("fitness: %d\n", fitness_melhor_individuo);
+        free(fitness);
+        if(fitness_melhor_individuo == 0){
+          criterio_parada = 0;
+          break;
+        }
+        if(geracao == 50000){
+          geracao = 1;
+          apaga_populacao(populacao);
+          break;
+        }
+      }
     }
 
 
@@ -78,14 +91,10 @@ Gera vetor de fitness normalizado da população.
 100 -> melhor
 0   -> pior
 */
-float* gera_vetor_fitness(int** population, int** tabuleiro, int n){
-    int soma_fitness = 0;
-    for(int i = 0; i < MAX_POPULATION;i++){
-      soma_fitness+= avalia_individuo(tabuleiro,population[i],n);
-    }
-    float* fitness_population = (float*)calloc(MAX_POPULATION,sizeof(float));
+int* gera_vetor_fitness(int** population, int** tabuleiro, int n){
+    int* fitness_population = (int*)calloc(MAX_POPULATION,sizeof(int));
     for(int i = 0; i < MAX_POPULATION; i++){
-      fitness_population[i] = 1-((float)avalia_individuo(tabuleiro,population[i],n))/soma_fitness;
+      fitness_population[i] = avalia_individuo(tabuleiro,population[i],n);
     }
     return fitness_population;
 }
@@ -94,20 +103,19 @@ float* gera_vetor_fitness(int** population, int** tabuleiro, int n){
 /*
 Função que faz a recombinação dos indivíduos.
 O método utilizado é pegar o melhor indivíduo e recombinar com toda a população.
-A recombinação é feita herdando com 50% de chance cada o gene do pai1 ou pai2.
 */
-int recombina_individuos_elitismo(int** population, int n, float *fitness){
+int recombina_individuos_elitismo(int** population, int n, int *fitness){
     int index_melhorIndividuo;
-    int fitness_melhorIndividuo = 0;
+    int fitness_melhorIndividuo = 100000000;
     for(int i = 0; i< MAX_POPULATION; i++)
-      if(fitness[i] > fitness_melhorIndividuo){
+      if(fitness[i] < fitness_melhorIndividuo){
         index_melhorIndividuo = i;
         fitness_melhorIndividuo = fitness[i];
       }
     for(int i = 0; i < MAX_POPULATION; i++){
+      int corte = rand()%n;
       for(int j = 0; j < n; j++){
-        if(rand()%2)
-          population[i][j] = population[index_melhorIndividuo][j]; // Herda a posição Y do melhor pai
+          population[i][j] = population[index_melhorIndividuo][j];
       }
     }
     return index_melhorIndividuo;
@@ -285,7 +293,6 @@ int verifica_ataque(int** tabuleiro, int n, int posX, int posY){
               continue;
             if(tabuleiro[posX][i] != 0){
                 ataques++;
-                break;
             }                
         }
         for(int i = 0; i < n; i++){
@@ -293,7 +300,6 @@ int verifica_ataque(int** tabuleiro, int n, int posX, int posY){
                 continue;
             if(tabuleiro[i][posY] != 0){
                 ataques++;
-                break;
             }                
         }
     }
@@ -301,25 +307,21 @@ int verifica_ataque(int** tabuleiro, int n, int posX, int posY){
         for(int i = 1; (posX+i<n)&&(posY+i<n); i++){
             if(tabuleiro[posX+i][posY+i] != 0){
                 ataques++;
-                break;
             }                
         }
-        for(int i = 1; (posX-i>=0)&&(posY-i>=0); i--){
+        for(int i = 1; (posX-i>=0)&&(posY-i>=0); i++){
             if(tabuleiro[posX-i][posY-i] != 0){
                 ataques++;
-                break;
             }                
         }
         for(int i = 1; (posX+i<n)&&(posY-i>=0); i++){
             if(tabuleiro[posX+i][posY-i] != 0){
                 ataques++;
-                break;
             }                
         }
         for(int i = 1; (posX-i>=0)&&(posY+i<n); i++){
             if(tabuleiro[posX-i][posY+i] != 0){
                 ataques++;
-                break;
             }                
         }
     }
