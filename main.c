@@ -21,8 +21,8 @@ int avalia_individuo(int **tabuleiroint, int* individuo, int n);
 int recombina_individuos_elitismo(int** population, int n, int* fitness);
 int mutacao(int** population, int n);
 
-#define MAX_POPULATION 10
-#define MUTATION_RATE  0.1
+#define MAX_POPULATION 20
+#define MUTATION_RATE  1
 
 
 int main()
@@ -62,7 +62,7 @@ int main()
         //printf("fitness: %d\n", fitness_melhor_individuo);
         free(fitness);
         if(fitness_melhor_individuo == 0){
-          insere_individuo(populacao[index_melhor_individuo], tabuleiro, n);
+          insere_individuo(melhor_individuo, tabuleiro, n);
           printa_tabuleiro(tabuleiro, n);
           printf("geracao: %d\n",geracao);
           printf("genocidios: %d", genocidios);
@@ -70,7 +70,7 @@ int main()
           criterio_parada = 0;
           break;
         }
-        if(geracao == 10000){
+        if(geracao == 50000){
           genocidios++;
           geracao = 1;
           apaga_populacao(populacao);
@@ -78,14 +78,6 @@ int main()
         }
       }
     }
-
-
-
-
-
-
-
-
 
 
     free(tabuleiro);
@@ -125,6 +117,22 @@ int recombina_individuos_elitismo(int** population, int n, int *fitness){
       }
     }
     return index_melhorIndividuo;
+}
+
+
+/*
+Seleciona e retorna o index do melhor indivíduo da população.
+*/
+int seleciona_melhor_individuo(int *fitness){
+  int melhor_fitness = __INT32_MAX__;
+  int index;
+  for(int i = 0; i < MAX_POPULATION; i++)
+    if(fitness[i] < melhor_fitness){
+      index = i;
+      melhor_fitness = fitness[i];
+    }
+
+  return index;
 }
 
 
